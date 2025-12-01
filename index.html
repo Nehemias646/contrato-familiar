@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contrato Familiar Digital</title>
-
+    
     <script src="https://cdn.tailwindcss.com"></script>
-
+    
     <!-- PDF Generation Libraries -->
     <!-- html2canvas es necesario para convertir el HTML en una imagen -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- jspdf es necesario para convertir la imagen en un PDF descargable -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
+    
     <!-- Importar fuentes clásicas -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
-
+    
     <style>
         /* CONFIGURACIÓN GENERAL */
         body {
@@ -68,7 +68,7 @@
             border-left: none;
             transform: rotate(45deg);
         }
-
+        
         /* TÍTULOS Y TEXTO FIJO */
         .contract-title {
             font-family: 'Playfair Display', serif;
@@ -199,7 +199,7 @@
         .signature-row .input-group:last-child {
             max-width: 25%;
         }
-
+        
         /* SELLO DORADO DECORATIVO */
         .stamp-golden {
             position: absolute;
@@ -238,14 +238,14 @@
         <h2 class="text-xl font-bold mb-3 text-yellow-300">Asistente de Contrato Familiar</h2>
         <div class="flex flex-wrap items-center gap-4">
             <input type="text" id="prompt-input" placeholder="Ej: Sugerir tareas para un niño de 8 años." class="p-2 flex-grow rounded-md text-gray-900 border border-gray-600 focus:ring-yellow-500 focus:border-yellow-500 min-w-[300px] md:min-w-0" onkeydown="if(event.key === 'Enter') generateContent()">
-
+            
             <button onclick="generateContent()" class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold py-2 px-4 rounded-md shadow-md transition duration-300">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
                 </svg>
                 Asistir
             </button>
-
+            
             <!-- BOTÓN PARA DESCARGAR PDF -->
             <button onclick="generatePDF()" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -254,7 +254,7 @@
                 Descargar PDF
             </button>
         </div>
-
+        
         <div id="ai-output" class="mt-3 p-3 bg-gray-700 rounded-md text-sm min-h-[50px] max-h-[100px] overflow-y-auto">
             El Asistente de IA te ayudará a llenar los campos con ideas o sugerencias.
         </div>
@@ -272,7 +272,7 @@
 
         <!-- CAPA DE CAMPOS (Posicionamiento Absoluto) -->
         <div class="form-fields-overlay">
-
+            
             <!-- Campo 1: Nombre de Miembro -->
             <div class="input-group" style="top: 22%;">
                 <label for="member-name">Miembro de la Familia:</label>
@@ -334,11 +334,11 @@
             </div>
 
         </div>
-
+        
         <!-- DECORACIONES ADICIONALES -->
         <!-- Sello dorado decorativo -->
         <div class="stamp-golden"></div>
-
+        
         <!-- TEXTO DE ACTIVIDAD FIJO -->
         <p class="contract-activity-text">Actividad: 60 s en parejas para reflexionar sobre lo que más le gusta de la persona que tienen enfrente.</p>
     </div>
@@ -347,18 +347,24 @@
     <div id="saveStatus" class="bg-green-500">Guardado Automático</div>
 
 <script type="module">
+    // -------------------------------------------------------------------------
+    // CONFIGURACIÓN PARA EL ENTORNO DE CANVAS
+    // Se utilizan las variables globales inyectadas para la configuración de Firebase
+    // -------------------------------------------------------------------------
+    
+    // Variables globales de Canvas
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    const CONTRACT_DOC_ID = 'main_contract'; // ID fijo para el documento del contrato
+    
     // Importar Firebase SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    setLogLevel('Debug'); // Enable Firebase logging for debugging
-
-    // Global Variables (Provided by the environment)
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    // setLogLevel('Debug'); // Descomentar para depuración de Firebase
 
     let db;
     let auth;
@@ -383,34 +389,44 @@
 
     // 1. Initialize Firebase and Authentication
     const initializeFirebase = async () => {
+        if (!firebaseConfig) {
+            console.error("Firebase configuration not available.");
+            showSaveStatus("Error: Configuración de Firebase no encontrada.", true);
+            return;
+        }
+
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
+            
+            // Autenticación usando el token de Canvas o anónima como fallback
+            if (initialAuthToken) {
+                await signInWithCustomToken(auth, initialAuthToken);
+            } else {
+                await signInAnonymously(auth);
+            }
 
-            onAuthStateChanged(auth, async (user) => {
+            onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    // User is signed in
+                    // Usar user.uid para la ruta privada de Canvas
                     userId = user.uid;
-                    // Define the private document path
-                    contractDocRef = doc(db, `artifacts/${appId}/users/${userId}/contracts`, 'family-contract');
+                    // Ruta: /artifacts/{appId}/users/{userId}/contracts/main_contract
+                    contractDocRef = doc(db, 'artifacts', appId, 'users', userId, 'contracts', CONTRACT_DOC_ID);
                     isAuthReady = true;
-                    // Start listening for data changes after auth is complete
+                    // Iniciar la escucha de datos después de la autenticación
                     listenForContractChanges();
                     console.log("Firestore initialized. User ID:", userId);
+                    showSaveStatus("Conectado al almacenamiento de datos.", false);
                 } else {
-                    // If no user is signed in, attempt sign-in
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
+                    console.log("No user signed in or authentication failed.");
+                    showSaveStatus("Error de autenticación Firebase.", true);
                 }
             });
 
         } catch (error) {
             console.error("Error initializing Firebase or signing in:", error);
-            showSaveStatus("Error al iniciar la aplicación.", true);
+            showSaveStatus("Error al iniciar la aplicación. Revise su configuración Firebase.", true);
         }
     };
 
@@ -440,10 +456,14 @@
 
     // 3. Save data to Firestore (Called on every input change)
     const saveContract = async (fieldName, value) => {
-        if (!isAuthReady || !contractDocRef) return;
-
+        if (!isAuthReady || !contractDocRef) {
+            // No mostrar el toast si el error es solo por la inicialización de Firebase
+            console.warn("Save attempted before Firebase was ready.");
+            return;
+        }
+        
         const dataToSave = { [fieldName]: value };
-
+        
         try {
             // Use setDoc with { merge: true } to update only the specific field
             await setDoc(contractDocRef, dataToSave, { merge: true });
@@ -466,7 +486,7 @@
             });
         });
     };
-
+    
     // 5. AI Assistant Function (API Call to Gemini)
     window.generateContent = async () => {
         const promptInput = document.getElementById('prompt-input');
@@ -489,12 +509,13 @@
         const currentContext = JSON.stringify(contractData, null, 2);
 
         const systemPrompt = "Eres un asistente familiar amigable y servicial, especializado en la creación de contratos familiares. Tu tarea es responder a la solicitud del usuario (userQuery) basándote en el 'Contexto Actual del Contrato'. Proporciona una respuesta clara, concisa y directamente aplicable al llenado del formulario. No incluyas saludos ni despedidas. Si el usuario te pide sugerencias de tareas, lista 3-5 opciones directas.";
-        const userQuery = `Solicitud del usuario: \"${userPrompt}\". Contexto Actual del Contrato: ${currentContext}.`;
+        const userQuery = `Solicitud del usuario: "${userPrompt}". Contexto Actual del Contrato: ${currentContext}.`;
 
+        // La API Key está vacía y será proporcionada automáticamente por el entorno de Canvas.
         const apiKey = ""; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-
-        let responseText = "Lo siento, hubo un error al conectar con el asistente.";
+        
+        let responseText = "Lo siento, hubo un error al conectar con el asistente. (Error de red o API Key).";
 
         try {
             const payload = {
@@ -518,19 +539,27 @@
                     const delay = Math.pow(2, i) * 1000;
                     await new Promise(resolve => setTimeout(resolve, delay));
                 } else {
+                    // Manejo de error específico para API Key (400/403)
+                    if (response.status === 400 || response.status === 403) {
+                         responseText = `Error de API: Verifica si tu Gemini API Key es válida. Código de estado: ${response.status}.`;
+                    }
                     throw new Error(`API error: ${response.status}`);
                 }
             }
 
         } catch (error) {
             console.error("Error during API call:", error);
-            responseText = "Ocurrió un error inesperado al contactar al servidor.";
+            if (error.message.includes("Failed to fetch")) {
+                responseText = "Ocurrió un error de red. Podría ser un problema de CORS o un cortafuegos.";
+            } else if (!responseText.includes("Error de API")) {
+                responseText = "Ocurrió un error inesperado al contactar al servidor.";
+            }
         } finally {
             loadingIndicator.classList.add('hidden');
             aiOutput.textContent = responseText;
         }
     };
-
+    
     // 6. Function to generate and download the PDF
     window.generatePDF = async () => {
         const input = document.querySelector('.contract-wrapper');
@@ -541,7 +570,7 @@
         const status = document.getElementById('saveStatus');
         panel.style.display = 'none';
         status.style.display = 'none';
-
+        
         // Temporarily adjust margin for clean capture
         const originalMarginTop = input.style.marginTop;
         input.style.marginTop = '20px'; 
@@ -554,10 +583,10 @@
                 allowTaint: true,
                 logging: false
             });
-
+            
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF('p', 'mm', 'a4'); 
-
+            
             // PDF A4 dimensions in mm
             const pdfWidth = 210; 
 
@@ -566,10 +595,10 @@
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
             const imgData = canvas.toDataURL('image/png');
-
+            
             // Add the image to the PDF
             pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight); 
-
+            
             // Get member name for file naming
             const memberName = document.getElementById('member-name').value || 'Contrato_Familiar';
             const fileName = `${memberName.replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
