@@ -511,7 +511,9 @@
         const systemPrompt = "Eres un asistente familiar amigable y servicial, especializado en la creación de contratos familiares. Tu tarea es responder a la solicitud del usuario (userQuery) basándote en el 'Contexto Actual del Contrato'. Proporciona una respuesta clara, concisa y directamente aplicable al llenado del formulario. No incluyas saludos ni despedidas. Si el usuario te pide sugerencias de tareas, lista 3-5 opciones directas.";
         const userQuery = `Solicitud del usuario: "${userPrompt}". Contexto Actual del Contrato: ${currentContext}.`;
 
-        // La API Key está vacía y será proporcionada automáticamente por el entorno de Canvas.
+        // INSTRUCCIÓN CRÍTICA: Si se ejecuta fuera de Canvas (ej. GitHub Pages), 
+        // DEBE reemplazar el valor "" con su propia CLAVE DE API de Gemini. 
+        // En este entorno de Canvas, déjelo como "".
         const apiKey = ""; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
         
@@ -539,9 +541,9 @@
                     const delay = Math.pow(2, i) * 1000;
                     await new Promise(resolve => setTimeout(resolve, delay));
                 } else {
-                    // Manejo de error específico para API Key (400/403)
+                    // Manejo de error específico para API Key inválida (400/403)
                     if (response.status === 400 || response.status === 403) {
-                         responseText = `Error de API: Verifica si tu Gemini API Key es válida. Código de estado: ${response.status}.`;
+                         responseText = `Error de API (Código ${response.status}): Parece que su clave de API de Gemini no es válida o está ausente. Si está en GitHub Pages, ingrese su clave personal en el código.`;
                     }
                     throw new Error(`API error: ${response.status}`);
                 }
@@ -550,7 +552,7 @@
         } catch (error) {
             console.error("Error during API call:", error);
             if (error.message.includes("Failed to fetch")) {
-                responseText = "Ocurrió un error de red. Podría ser un problema de CORS o un cortafuegos.";
+                responseText = "Ocurrió un error de red. Verifique su conexión o que el archivo no esté bloqueado por políticas de CORS.";
             } else if (!responseText.includes("Error de API")) {
                 responseText = "Ocurrió un error inesperado al contactar al servidor.";
             }
